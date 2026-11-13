@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>Jugando…</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+  #game { width:100%; height:100%; }
+  #back { position:fixed; top:max(8px, env(safe-area-inset-top)); left:8px; z-index:99999;
+          background:#000a; color:#fff; border:1px solid #fff4; border-radius:8px;
+          padding:8px 12px; font:14px system-ui; text-decoration:none; }
+</style>
+</head>
+<body>
+<a id="back" href="index.html">← Biblioteca</a>
+<div id="game"></div>
+<script src="api-config.js"></script>
+<script src="db.js"></script>
+<script>
+(async () => {
+  const rawId = new URLSearchParams(location.search).get('id');
+  if (!rawId) { location.replace('index.html'); return; }
+  const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
+  const result = await getRom(id);
+  const meta = result?.meta || result;
+  const blob = result?.blob;
+  const requestedCore = new URLSearchParams(location.search).get('core');
+  const core = meta?.core === 'auto' ? requestedCore : meta?.core;
+
+  if (!meta) { location.replace('index.html'); return; }
+  if (!['nes', 'snes', 'gb', 'gba', 'segaMD', 'n64', 'nds', '3ds', 'psx'].includes(core)) {
+    alert('Selecciona el sistema de esta ROM desde la biblioteca.');
+    location.replace('index.html');
+    return;
+  }
+
+  const gameUrl = typeof blob === 'string' ? blob : (blob ? URL.createObjectURL(blob) : null);
+  if (!gameUrl) { location.replace('index.html'); return; }
+
+  document.title = meta.name;
+
+  window.EJS_player = '#game';
+  window.EJS_core = core;
+  window.EJS_gameName = meta.name;
+  window.EJS_gameUrl = gameUrl;
+  window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+
+  const s = document.createElement('script');
+  s.src = window.EJS_pathtodata + 'loader.js';
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>
