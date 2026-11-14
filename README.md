@@ -30,8 +30,8 @@ GitHub Pages publica la interfaz estática; Render ejecuta el backend que accede
 
 1. En Render, crea un Blueprint desde este repositorio y completa `B2_BUCKET_NAME`, `B2_ENDPOINT`, `B2_KEY_ID` y `B2_APPLICATION_KEY` con los valores privados de B2. No subas esas claves al repositorio.
 2. Espera a que el servicio `emuapp-b2-api` esté activo y verifica `https://<servicio>.onrender.com/api/health`.
-3. En GitHub, abre **Settings → Secrets and variables → Actions → Variables** y crea `API_BASE_URL` con la URL del servicio de Render, sin `/` al final.
-4. En **Settings → Pages**, selecciona **GitHub Actions** como fuente. Después de guardar `API_BASE_URL`, ejecuta el workflow **Deploy GitHub Pages** desde la pestaña **Actions**. Antes de configurar la variable, el workflow omite la publicación.
+3. En **Settings → Pages**, selecciona **GitHub Actions** como fuente. El workflow usa `https://emuapp-b2-api.onrender.com` por defecto. Si publicas tu propia instancia de la API, crea la variable `API_BASE_URL` en **Settings → Secrets and variables → Actions → Variables** con la URL de tu servicio, sin `/` al final.
+4. Ejecuta el workflow **Deploy GitHub Pages** desde la pestaña **Actions** para publicar o actualizar la interfaz.
 5. La página estará en `https://buildappstore.github.io/EmUApp/`.
 
 El endpoint de subida queda público para que cualquiera pueda aportar juegos, como se solicita. Esto también permite que otras personas consuman almacenamiento y ancho de banda de B2. Para jugar desde GitHub Pages, configura CORS en el bucket de B2 para permitir lecturas `GET` y `HEAD` desde `https://buildappstore.github.io`.

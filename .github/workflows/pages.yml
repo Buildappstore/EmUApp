@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ vars.API_BASE_URL != '' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -28,7 +27,7 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare static site
         env:
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://emuapp-b2-api.onrender.com' }}
         run: |
           mkdir dist
           cp index.html play.html api-config.js db.js sw.js manifest.webmanifest icon.svg dist/
