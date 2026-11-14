@@ -45,3 +45,5 @@ La búsqueda automática con ScreenScraper queda pendiente de credenciales de de
 La app no ofrece una acción para eliminar juegos del bucket.
 
 La biblioteca agrupa los juegos por sistema. EmulatorJS dispone del core `3ds` (Azahar); los archivos `.3ds`, `.cci` y `.cxi` se asignan a ese core. Para archivos comprimidos, selecciona manualmente el sistema correcto.
+
+La sección «Más jugados» muestra hasta tres juegos ordenados por partidas iniciadas. El contador compartido se guarda en B2 y empieza desde cero; no hay historial de partidas anterior a esta función.

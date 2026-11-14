@@ -415,7 +415,7 @@
   </section>
   <div id="info" class="library-status" role="status" aria-live="polite"></div>
   <section class="recent-section" id="recent" aria-labelledby="recent-title" hidden>
-    <h2 class="recent-heading" id="recent-title">⚡ Recién añadidos <span class="section-kicker">NOVEDADES DE TU COLECCIÓN</span></h2>
+    <h2 class="recent-heading" id="recent-title">🔥 Más jugados <span class="section-kicker">TOP 3 DE TU COLECCIÓN</span></h2>
     <div class="recent-grid" id="recent-grid"></div>
   </section>
   <div id="grid"></div>
@@ -441,6 +441,7 @@ const SYSTEM_ACCENT = {
 const $ = id => document.getElementById(id);
 const fmt = b => b > 1e9 ? (b/1e9).toFixed(2)+' GB' : (b/1e6).toFixed(1)+' MB';
 let all = [];
+let playCountsError = false;
 
 function playUrl(rom, core = null) {
   const params = new URLSearchParams({ id: String(rom.id) });
@@ -488,7 +489,7 @@ function createRecentCard(rom) {
   return card;
 }
 
-async function render() {
+async function loadLibrary() {
   $('info').textContent = 'Cargando biblioteca de Backblaze B2…';
   try {
     all = await listRoms();
@@ -500,6 +501,19 @@ async function render() {
     $('info').textContent = `No se pudo cargar la biblioteca de B2: ${error.message}`;
     return;
   }
+  playCountsError = false;
+  try {
+    const playCounts = await listRomPlayCounts();
+    all = all.map(game => ({ ...game, playCount: Number(playCounts[game.id]) || 0 }));
+  } catch (error) {
+    console.error('No se pudieron cargar los contadores de partidas', error);
+    playCountsError = true;
+    all = all.map(game => ({ ...game, playCount: 0 }));
+  }
+  render();
+}
+
+function render() {
   const q = $('q').value.toLowerCase();
   const list = all.filter(r => r.name.toLowerCase().includes(q))
                   .sort((a,b) => a.name.localeCompare(b.name));
@@ -520,9 +534,15 @@ async function render() {
 
   $('game-count').textContent = String(all.length);
   $('system-count').textContent = String(new Set(all.map(r => LABEL[r.core] ? r.core : 'auto')).size);
-  const recent = [...list].sort((a, b) => Number(b.added || 0) - Number(a.added || 0)).slice(0, 3);
-  $('recent-grid').replaceChildren(...recent.map(createRecentCard));
-  $('recent').hidden = recent.length === 0;
+  const mostPlayed = [...list]
+    .filter(game => Number(game.playCount) > 0)
+    .sort((a, b) =>
+      Number(b.playCount || 0) - Number(a.playCount || 0) ||
+      Number(b.added || 0) - Number(a.added || 0)
+    )
+    .slice(0, 3);
+  $('recent-grid').replaceChildren(...mostPlayed.map(createRecentCard));
+  $('recent').hidden = mostPlayed.length === 0;
 
   for (const group of groups) {
     const section = document.createElement('section');
@@ -590,7 +610,7 @@ async function render() {
         if (!file) return;
         try {
           await setRomCover(r.id, file);
-          await render();
+          await loadLibrary();
         } catch (error) {
           alert(`No se pudo guardar la carátula: ${error.message}`);
         } finally {
@@ -634,7 +654,7 @@ async function render() {
           save.disabled = true;
           try {
             await setRomCore(r.id, select.value);
-            await render();
+            await loadLibrary();
           } catch (error) {
             alert(`No se pudo guardar el sistema: ${error.message}`);
           } finally {
@@ -663,6 +683,9 @@ async function render() {
     $('grid').appendChild(section);
   }
   storageInfo();
+  if (playCountsError) {
+    $('info').textContent += ' · No se pudieron cargar los contadores de partidas';
+  }
 }
 
 async function storageInfo() {
@@ -670,9 +693,9 @@ async function storageInfo() {
 }
 
 $('add').onclick = () => $('file').click();
-$('refresh').onclick = render;
+$('refresh').onclick = loadLibrary;
 $('q').oninput = render;
-window.addEventListener('focus', render);
+window.addEventListener('focus', loadLibrary);
 
 $('file').onchange = async e => {
   if (navigator.storage?.persist) navigator.storage.persist(); // pide que el navegador no borre los datos
@@ -690,10 +713,10 @@ $('file').onchange = async e => {
   }
   e.target.value = '';
   if (skipped.length) alert('Elige primero el sistema en el menú para estos archivos:\n' + skipped.join('\n'));
-  render();
+  loadLibrary();
 };
 
-render();
+loadLibrary();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>

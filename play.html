@@ -39,6 +39,14 @@
   const gameUrl = typeof blob === 'string' ? blob : (blob ? URL.createObjectURL(blob) : null);
   if (!gameUrl) { location.replace('index.html'); return; }
 
+  if (typeof meta.id === 'string') {
+    try {
+      await recordRomPlay(meta.id);
+    } catch (error) {
+      alert(`No se pudo registrar la partida: ${error.message}`);
+    }
+  }
+
   document.title = meta.name;
 
   window.EJS_player = '#game';

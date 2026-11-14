@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'shell-v15';
+const SHELL_CACHE = 'shell-v16';
 const EJS_CACHE = 'ejs-v1';
 const SHELL = ['./', 'index.html', 'play.html', 'api-config.js', 'db.js', 'manifest.webmanifest', 'icon.svg'];
 

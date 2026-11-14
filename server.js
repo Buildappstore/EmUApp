@@ -72,12 +72,17 @@ function metadataKey() {
   return `${prefix ? `${prefix}/` : ''}__emuapp/rom-metadata.json`;
 }
 
+function playCountsKey() {
+  return `${prefix ? `${prefix}/` : ''}__emuapp/rom-play-counts.json`;
+}
+
 function coverKeyForRom(romKey) {
   const hash = crypto.createHash('sha256').update(romKey).digest('hex');
   return `${coverPrefix()}${hash}`;
 }
 
 let romMetadataCache;
+let playCountWriteQueue = Promise.resolve();
 
 async function getRomMetadata() {
   if (romMetadataCache) return romMetadataCache;
@@ -102,9 +107,50 @@ async function getRomMetadata() {
   }
 }
 
+async function getRomPlayCounts() {
+  try {
+    const response = await s3Client.send(new GetObjectCommand({
+      Bucket: bucketName,
+      Key: playCountsKey(),
+    }));
+    const counts = JSON.parse(await response.Body.transformToString());
+    if (!counts || Array.isArray(counts) || typeof counts !== 'object' ||
+        Object.values(counts).some(count => !Number.isSafeInteger(count) || count < 0)) {
+      throw new Error('El índice de partidas no tiene un formato válido');
+    }
+    return counts;
+  } catch (error) {
+    if (error.name === 'NoSuchKey' || error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      return {};
+    }
+    throw error;
+  }
+}
+
+function incrementRomPlayCount(romKey) {
+  const operation = playCountWriteQueue.then(async () => {
+    const counts = await getRomPlayCounts();
+    const currentPlayCount = Object.prototype.hasOwnProperty.call(counts, romKey) ? counts[romKey] : 0;
+    const playCount = currentPlayCount + 1;
+    if (!Number.isSafeInteger(playCount)) {
+      throw new Error('El contador de partidas alcanzó su límite');
+    }
+    await s3Client.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: playCountsKey(),
+      Body: JSON.stringify({ ...counts, [romKey]: playCount }),
+      ContentType: 'application/json',
+    }));
+    return playCount;
+  });
+  playCountWriteQueue = operation.then(() => undefined, () => undefined);
+  return operation;
+}
+
 function isRomKey(key) {
   const root = prefix ? `${prefix}/` : '';
-  return key.startsWith(root) &&
+  return key.length > root.length &&
+    key.startsWith(root) &&
     !key.startsWith(coverPrefix()) &&
     !key.startsWith(`${root}__emuapp/`) &&
     !key.endsWith('/') &&
@@ -183,6 +229,42 @@ app.get('/api/roms', async (req, res) => {
   } catch (error) {
     console.error('Error listando ROMs en B2', error);
     res.status(500).json({ error: 'No se pudieron listar los ROMs de Backblaze B2' });
+  }
+});
+
+app.get('/api/roms/play-counts', async (req, res) => {
+  if (!bucketName || !endpoint || !accessKeyId || !secretAccessKey) {
+    return res.status(500).json({ error: 'Falta configuración de Backblaze B2' });
+  }
+
+  try {
+    res.json(await getRomPlayCounts());
+  } catch (error) {
+    console.error('Error leyendo partidas desde B2', error);
+    res.status(500).json({ error: 'No se pudieron cargar las partidas desde Backblaze B2' });
+  }
+});
+
+app.post('/api/roms/play', async (req, res) => {
+  if (!bucketName || !endpoint || !accessKeyId || !secretAccessKey) {
+    return res.status(500).json({ error: 'Falta configuración de Backblaze B2' });
+  }
+
+  const romKey = cleanKey(req.body?.id);
+  if (!isRomKey(romKey)) {
+    return res.status(400).json({ error: 'ROM no válido para registrar una partida' });
+  }
+
+  try {
+    await s3Client.send(new HeadObjectCommand({ Bucket: bucketName, Key: romKey }));
+    const playCount = await incrementRomPlayCount(romKey);
+    res.json({ id: romKey, playCount });
+  } catch (error) {
+    if (error.name === 'NoSuchKey' || error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+      return res.status(404).json({ error: 'ROM no encontrado' });
+    }
+    console.error('Error registrando partida en B2', error);
+    res.status(500).json({ error: 'No se pudo registrar la partida en Backblaze B2' });
   }
 });
 

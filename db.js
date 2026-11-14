@@ -106,6 +106,17 @@ async function listRoms() {
   return await apiFetch('/api/roms');
 }
 
+async function listRomPlayCounts() {
+  return await apiFetch('/api/roms/play-counts');
+}
+
+async function recordRomPlay(id) {
+  return await apiFetch('/api/roms/play', {
+    method: 'POST',
+    body: JSON.stringify({ id: String(id) }),
+  });
+}
+
 async function getRom(id) {
   try {
     const data = await apiFetch(`/api/roms/${encodeURIComponent(String(id))}`);
