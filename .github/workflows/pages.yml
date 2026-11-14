@@ -27,11 +27,16 @@ jobs:
         uses: actions/configure-pages@v5
       - name: Prepare static site
         env:
-          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://emuapp-b2-api.onrender.com' }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
           mkdir dist
           cp index.html play.html api-config.js db.js sw.js manifest.webmanifest icon.svg dist/
-          node -e "require('fs').writeFileSync('dist/api-config.js', 'window.API_BASE_URL = ' + JSON.stringify(process.env.API_BASE_URL) + ';\\n')"
+          node <<'NODE'
+          const fs = require('fs');
+          const apiBaseUrl = process.env.API_BASE_URL || 'https://emuapp-b2-api.onrender.com';
+          if (!apiBaseUrl) throw new Error('API_BASE_URL must not be empty');
+          fs.writeFileSync('dist/api-config.js', `window.API_BASE_URL = ${JSON.stringify(apiBaseUrl)};\n`);
+          NODE
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
