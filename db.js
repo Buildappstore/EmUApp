@@ -1,4 +1,7 @@
-const API_BASE = (window.API_BASE_URL || '').replace(/\/+$/, '');
+const DEFAULT_API_BASE = location.hostname === 'buildappstore.github.io'
+  ? 'https://emuapp-b2-api.onrender.com'
+  : '';
+const API_BASE = (window.API_BASE_URL || DEFAULT_API_BASE).replace(/\/+$/, '');
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {

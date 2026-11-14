@@ -1,4 +1,4 @@
-const SHELL_CACHE = 'shell-v16';
+const SHELL_CACHE = 'shell-v17';
 const EJS_CACHE = 'ejs-v1';
 const SHELL = ['./', 'index.html', 'play.html', 'api-config.js', 'db.js', 'manifest.webmanifest', 'icon.svg'];
 
@@ -18,6 +18,22 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+
+  if (url.origin === location.origin && url.pathname.endsWith('/api-config.js')) {
+    e.respondWith(
+      fetch(req, { cache: 'no-cache' })
+        .then(res => {
+          if (res.ok) caches.open(SHELL_CACHE).then(c => c.put(req, res.clone()));
+          return res;
+        })
+        .catch(async error => {
+          const cached = await caches.match(req, { ignoreSearch: true });
+          if (cached) return cached;
+          throw error;
+        })
+    );
+    return;
+  }
 
   // Archivos propios de la app: caché primero, actualiza en segundo plano
   if (url.origin === location.origin && !url.pathname.startsWith('/api/')) {
